@@ -1,20 +1,46 @@
 #include "rbtree.h"
-
 #include <stdlib.h>
 
 rbtree *new_rbtree(void) {
-  rbtree *p = (rbtree *)calloc(1, sizeof(rbtree));
-  // TODO: initialize struct if needed
-  return p;
+  rbtree *t = calloc(1, sizeof(*t));
+  if (t == NULL) {
+    return NULL;
+  }
+
+  node_t *nil = calloc(1, sizeof(*nil));
+  if (nil == NULL) {
+    free(t);
+    return NULL;
+  }
+
+  nil->color = RBTREE_BLACK;
+  nil->parent = nil;
+  nil->left = nil;
+  nil->right = nil;
+
+  t->nil = nil;
+  t->root = nil;
+
+  return t;
+}
+
+static void free_node(node_t *x, node_t *nil) {
+  if (x == nil) return;
+
+  free_node(x->left, nil);
+  free_node(x->right, nil);
+  free(x);
 }
 
 void delete_rbtree(rbtree *t) {
-  // TODO: reclaim the tree nodes's memory
+  if (t == NULL) return;
+  
+  free_node(t->root, t->nil);
+  free(t->nil);
   free(t);
 }
 
 node_t *rbtree_insert(rbtree *t, const key_t key) {
-  // TODO: implement insert
   return t->root;
 }
 
