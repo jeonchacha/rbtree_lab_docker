@@ -104,7 +104,7 @@ static void insert_fixup(rbtree *t, node_t *z) {
           // case1 삼촌 RED -> 색 뒤집기   
           p->color = RBTREE_BLACK;
           u->color = RBTREE_BLACK;
-          g = RBTREE_RED;
+          g->color = RBTREE_RED;
           z = g;
       } else { 
         // 삼촌 BLACK
@@ -179,22 +179,43 @@ node_t *rbtree_insert(rbtree *t, const key_t key) {
 
   insert_fixup(t, z);
 
-  return t->root;
+  return z;
 }
 
 node_t *rbtree_find(const rbtree *t, const key_t key) {
-  // TODO: implement find
-  return t->root;
+  if (t == NULL) return NULL;
+
+  node_t *x = t->root;
+  while (x != t->nil) {
+    if (key == x->key) {
+      return x;
+    } 
+    x = (key < x->key) ? x->left : x->right;
+  }
+
+  return NULL;
 }
 
 node_t *rbtree_min(const rbtree *t) {
-  // TODO: implement find
-  return t->root;
+  if (t == NULL || t->root == t->nil) return NULL;
+  
+  node_t *x = t->root;
+  while (x->left != t->nil) {
+    x = x->left;
+  }
+  
+  return x;
 }
 
 node_t *rbtree_max(const rbtree *t) {
-  // TODO: implement find
-  return t->root;
+  if (t == NULL || t->root == t->nil) return NULL;
+
+  node_t *x = t->root;
+  while (x->right != t->nil) {
+    x = x->right;
+  }
+
+  return x;
 }
 
 int rbtree_erase(rbtree *t, node_t *p) {
@@ -202,7 +223,19 @@ int rbtree_erase(rbtree *t, node_t *p) {
   return 0;
 }
 
+static void inorder_fill(const rbtree *t, const node_t *x, key_t *arr, size_t *idx) {
+  if (x == t->nil) return;
+
+  inorder_fill(t, x->left, arr, idx);
+  arr[(*idx)++] = x->key;
+  inorder_fill(t, x->right, arr, idx);
+}
+
 int rbtree_to_array(const rbtree *t, key_t *arr, const size_t n) {
-  // TODO: implement to_array
-  return 0;
+  if (t == NULL || arr == NULL || n == 0) return 0;
+
+  size_t idx = 0;
+  inorder_fill(t, t->root, arr, &idx);
+
+  return (int)idx;
 }
