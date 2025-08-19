@@ -5,6 +5,7 @@ typedef enum { ROT_LEFT, ROT_RIGHT } rb_rot_t;
 
 rbtree *new_rbtree(void) {
   rbtree *t = calloc(1, sizeof(*t));
+  
   if (t == NULL) {
     return NULL;
   }
@@ -100,6 +101,7 @@ static void insert_fixup(rbtree *t, node_t *z) {
 
     if (p == g->left) {   // 왼쪽 서브 트리
       node_t *u = g->right;
+
       if (u->color == RBTREE_RED) {
           // case1 삼촌 RED -> 색 뒤집기   
           p->color = RBTREE_BLACK;
@@ -218,8 +220,129 @@ node_t *rbtree_max(const rbtree *t) {
   return x;
 }
 
-int rbtree_erase(rbtree *t, node_t *p) {
-  // TODO: implement erase
+static void erase_fixup(rbtree *t, node_t *x) {
+  if (t == NULL || x == NULL) return;
+
+  while (x != t->root && x->color == RBTREE_BLACK) {
+    if (x == x->parent->left) {
+      node_t *w = x->parent->right;
+      // case 1 형제 색 BLACK으로 바꾸기 -> case 2~4
+      if (w->color == RBTREE_RED) {
+        w->color = RBTREE_BLACK;
+        x->parent->color = RBTREE_RED;
+        rotate(t, x->parent, ROT_LEFT);
+        w = x->parent->right;
+      }
+
+      // case 2 double-black을 부모로 위임
+      if (w->left->color == RBTREE_BLACK && w->right->color == RBTREE_BLACK) {
+        w->color = RBTREE_RED;
+        x = x->parent;
+      } else {
+        // case 3 -> case 4로 전환
+        if (w->right->color == RBTREE_BLACK) {
+          w->left->color = RBTREE_BLACK;
+          w->color = RBTREE_RED;
+          rotate(t, w, ROT_RIGHT);
+          w = x->parent->right;
+        }
+        // case 4
+        w->color = x->parent->color;
+        x->parent->color = RBTREE_BLACK;
+        w->right->color = RBTREE_BLACK;
+        rotate(t, x->parent, ROT_LEFT);
+        x = t->root;
+      }
+    } else {    // 좌우 대칭
+      node_t *w = x->parent->left;
+      // case 1 형제 색 BLACK으로 바꾸기 -> case 2~4
+      if (w->color == RBTREE_RED) {
+        w->color = RBTREE_BLACK;
+        x->parent->color = RBTREE_RED;
+        rotate(t, x->parent, ROT_RIGHT);
+        w = x->parent->left;
+      }
+
+      // case 2 double-black을 부모로 위임
+      if (w->left->color == RBTREE_BLACK && w->right->color == RBTREE_BLACK) {
+        w->color = RBTREE_RED;
+        x = x->parent;
+      } else {
+        // case 3 -> case 4로 전환
+        if (w->left->color == RBTREE_BLACK) {
+          w->right->color = RBTREE_BLACK;
+          w->color = RBTREE_RED;
+          rotate(t, w, ROT_LEFT);
+          w = x->parent->right;
+        }
+        // case 4
+        w->color = x->parent->color;
+        x->parent->color = RBTREE_BLACK;
+        w->left->color = RBTREE_BLACK;
+        rotate(t, x->parent, ROT_RIGHT);
+        x = t->root;
+      }
+    }
+  }
+  
+  x->color = RBTREE_BLACK;
+}
+
+static void transplant(rbtree *t, node_t *u, node_t *v) {
+  if (t == NULL || u == NULL || v == NULL) return;
+
+  if (u->parent == t->nil) {
+    t->root = v;
+  } else if (u == u->parent->left) {
+    u->parent->left = v;
+  } else {
+    u->parent->right = v;
+  }
+  v->parent = u->parent;
+}
+
+int rbtree_erase(rbtree *t, node_t *z) {
+  if (t == NULL || z == NULL) return 0;
+  
+  node_t *y = z;  // 실제로 삭제될 노드 후보
+  color_t y_original_color = y->color;
+  node_t *x = t->nil;   // 삭제 후 대체할 위치 추적 변수
+
+  if (z->left == t->nil) {
+    x = z->right;
+    transplant(t, z, z->right);
+  } else if (z->right == t->nil) {
+    x = z->left;
+    transplant(t, z, z->left);
+  } else {
+    node_t * succ = z->right;
+    while (succ->left != t->nil) {
+      succ = succ->left;
+    }
+    y = succ;    // 후계자 (오른쪽 서브트리의 최소)
+    y_original_color = y->color;
+    x = y->right;   // y는 왼쪽이 nil (최소니까)
+
+    if (y->parent == z) {
+      x->parent = y;    // x가 nil일 수도 있으므로 parent 지정 필요
+    } else {    // y가 트리에서 더 아래쪽
+      transplant(t, y, y->right);
+      y->right = z->right;
+      y->right->parent = y;
+    }
+
+    transplant(t, z, y);
+    y->left = z->left;
+    y->left->parent = y;
+    y->color = z->color;
+  }
+
+  if (y_original_color == RBTREE_BLACK) {
+    erase_fixup(t, x);
+  }
+
+  free(z);
+
   return 0;
 }
 
